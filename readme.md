@@ -6,7 +6,7 @@ In June 2015 Alexander Mordvintsev, Christopher Olah, and Mike Tyka posted some 
 
 But it wasn't easy getting here. The program released by Mordvintsev, Olah, and Tyka is an IPython notebook with about 100 lines of code, available in this [GitHub repository](https://github.com/google/deepdream). No problem there. However, the program depends on the Caffe neural network framework, which in turn has some other major dependencies, such as the Boost C++ library and the opencv library for computer vision. Getting all the pieces properly installed and communicating with one another was a bit of a *bad* deep dream. I made several attempts to get it running on my everyday computer, then switched to a different machine that had a little less cruft in its dark corners. That also failed. Annoyed and chagrined, I decided to try again on a completely fresh disk partition, with a newly installed operating system. Success at last.
 
-This memo documents the steps I followed in the final successful install. Note that the file paths given below are are all relative to my own home directory; obviously you need to substitute your own.
+This memo documents the steps I followed in the final successful install. If you too are having trouble learning to dream, maybe you'll find a useful clue here. Please note that the file paths and prompt strings given below are are all relative to my own home directory; obviously you need to substitute your own.
 
 ### Other guides to installation and troubleshooting
 
@@ -60,9 +60,9 @@ Homebrew automatically installs several dependencies: pkg-config, readline, sqli
 
 Note that OS X comes with a preinstalled Python. As a matter of fact, it has four of them, versions 2.3 through 2.7. And I ordinarily use a different Python distribution, from Anaconda. But I believe most of the trouble I was having could be traced back to stray linkages to packages from the wrong Python version. Seemed safest and simplest for this experiment to run the Homebrew install.
 
-### Install Caffe and its dependencies
+### Preparing to install Caffe
 
-Now we're ready to get Caffe going. Following the [installation instructions](http://caffe.berkeleyvision.org/install_osx.html), we start with some dependencies:
+Following the [installation instructions](http://caffe.berkeleyvision.org/install_osx.html) for Caffe, we start with some dependencies:
 
     folio:~ bph$ brew install -vd snappy leveldb gflags glog szip lmdb
     
@@ -80,12 +80,59 @@ Now we're ready to get Caffe going. Following the [installation instructions](ht
 
 "[OpenCV](http://opencv.org/about.html) (Open Source Computer Vision Library) is an open source computer vision and machine learning software library." It's large and complex, and it has dependencies that are also large and complex. One of those dependencies is a patched version of gcc, the Gnu C compiler, which has to be compiled from source; that takes about an hour.
 
-    folio:~ bph$ brew install --build-from-source -vd protobuf
+    folio:~ bph$ brew install --build-from-source -with-python -vd protobuf
 
 "[Protocol buffers](https://developers.google.com/protocol-buffers/?hl=en) are Google's language-neutral, platform-neutral, extensible mechanism for serializing structured data — think XML, but smaller, faster, and simpler."
 
-As the command indicates, this is another compile-from-source project. The '-vd' options request verbose output and debugging information, and verbose it is: The command will spew 2,200 lines of log entries into the terminal window, most of them having to do with localization. I'm relieved to know I've got zoneinfo set for any of the 12 places in Antarctica I might be visiting.
+As the command indicates, this is another compile-from-source project. The '-vd' options request verbose output and debugging information, which might be useful if anything goes wrong. I found the output was verbose indeed: 2,200 lines, most of them having to do with localization. I'm relieved to know I've got zoneinfo set for any of the 12 places in Antarctica I might be visiting.
 
+    # folio:~ bph$ brew install --build-from-source -vd boost boost-python
+    
+    folio:~ bph$ brew install --build-from-source -vd \
+         https://raw.githubusercontent.com/Homebrew/homebrew/6fd6a9b6b2f56139a44dd689d30b7168ac13effb/Library/Formula/boost.rb \
+         https://raw.githubusercontent.com/Homebrew/homebrew/3141234b3473717e87f3958d4916fe0ada0baba9/Library/Formula/boost-python.rb
 
+The commented version of this command installs the current version of the boost library and its python wrapper. At the time I was doing this work, the current version was 1.58, which some sources indicated was incompatible with Caffe. The alternative version with full URLs installs version 1.57. (I scarfed this command from [robertsdionne](https://gist.github.com/robertsdionne/f58a5fc6e5d1d5d2f798).)
 
+In this case I would suggest omitting the '-vd' options. I got more than 115,000 lines of output. I didn't read it all.
+
+### Install and build the Caffe framework
+
+Finally we can get started with Caffe itself.
+
+    folio:~ bph$ git clone https://github.com/BVLC/caffe.git
+    folio:~ bph$ cd caffe
+    
+But hold on. We've got still more requirements to attend to.
+
+    folio:caffe bph$ cat python/requirements.txt 
+    Cython>=0.19.2
+    numpy>=1.7.1
+    scipy>=0.13.2
+    scikit-image>=0.9.3
+    matplotlib>=1.3.1
+    ipython>=3.0.0
+    h5py>=2.2.0
+    leveldb>=0.191
+    networkx>=1.8.1
+    nose>=1.3.0
+    pandas>=0.12.0
+    python-dateutil>=1.4,<2
+    protobuf>=2.5.0
+    python-gflags>=2.0
+    pyyaml>=3.10
+    Pillow>=2.3.0
+    six>=1.1.0folio:python bph$ 
+
+Some of these were already installed above. Nevertheless, it's easiest to hand the whole list to pip:
+
+    folio:caffe bph$ pip install --requirement python/requirements.txt
+    
+Now we need to start mucking about with the Caffe makefile. First, make a copy of the example file distributed with the package.
+
+    folio:caffe bph$ cp Makefile.config.example Makefile.config
+
+The next steps call for editing `Makefile.config`. You can do this in a terminal window using nano or another line editor, or open it with a freestanding editor such as Sublime Text:
+
+    folio:caffe bph$ sublime Makefile.config
 
